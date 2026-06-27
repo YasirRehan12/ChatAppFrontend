@@ -1,11 +1,14 @@
-import { format, isToday, isYesterday } from "date-fns";
+import { format, isToday, isYesterday, isValid } from "date-fns";
 
 export const formatMessageTime = (date) => {
-  return format(new Date(date), "h:mm a");
+  const d = new Date(date);
+  if (!isValid(d)) return "";
+  return format(d, "h:mm a");
 };
 
 export const formatChatListTime = (date) => {
   const d = new Date(date);
+  if (!isValid(d)) return "";
   if (isToday(d)) return format(d, "h:mm a");
   if (isYesterday(d)) return "Yesterday";
   return format(d, "dd/MM/yyyy");
@@ -13,6 +16,7 @@ export const formatChatListTime = (date) => {
 
 export const formatLastSeen = (date) => {
   const d = new Date(date);
+  if (!isValid(d)) return "";
   if (isToday(d)) return `last seen today at ${format(d, "h:mm a")}`;
   if (isYesterday(d)) return `last seen yesterday at ${format(d, "h:mm a")}`;
   return `last seen on ${format(d, "dd/MM/yyyy")}`;

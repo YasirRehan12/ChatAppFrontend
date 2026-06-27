@@ -83,7 +83,7 @@ const MessageBubble = ({ message, isOwn, onEdit, onDelete, onReact, showSenderNa
             )}
           </div>
 
-          {isOwn && message.messageType === "text" && (
+          {isOwn && (
             <div className="relative">
               <button
                 onClick={() => setShowMenu(!showMenu)}
@@ -97,15 +97,17 @@ const MessageBubble = ({ message, isOwn, onEdit, onDelete, onReact, showSenderNa
                     isOwn ? "right-0" : "left-0"
                   } bg-white dark:bg-surface-darkPanel shadow-lg rounded-xl py-1 w-44 border border-gray-100 dark:border-gray-700 z-10 animate-pop-in`}
                 >
-                  <button
-                    onClick={() => {
-                      setEditing(true);
-                      setShowMenu(false);
-                    }}
-                    className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-surface-dark flex items-center gap-2"
-                  >
-                    <Pencil size={14} /> Edit
-                  </button>
+                  {message.messageType === "text" && (
+                    <button
+                      onClick={() => {
+                        setEditing(true);
+                        setShowMenu(false);
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-surface-dark flex items-center gap-2"
+                    >
+                      <Pencil size={14} /> Edit
+                    </button>
+                  )}
                   <button
                     onClick={() => {
                       onDelete(message._id, "me");
