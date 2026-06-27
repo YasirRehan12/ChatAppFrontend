@@ -1,19 +1,24 @@
-import { useState, useEffect, useCallback } from "react";
-import { X, Search, Check, Users } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { X, Search, Check, Users, Camera } from "lucide-react";
 import Avatar from "./Avatar";
 import axiosInstance from "../utils/axiosInstance";
 import { useChat } from "../context/ChatContext";
+import { useSocket } from "../context/SocketContext";
 import toast from "react-hot-toast";
 
 const NewGroupModal = ({ onClose }) => {
   const { openChat, fetchChats } = useChat();
-  const [step, setStep] = useState(1); // 1: select members, 2: name group
+  const { socket } = useSocket();
+  const [step, setStep] = useState(1); // 1: select members, 2: name group + photo
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [selected, setSelected] = useState([]);
   const [groupName, setGroupName] = useState("");
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState(null);
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
+  const fileInputRef = useRef(null);
 
   const search = useCallback(async (q) => {
     setLoading(true);
@@ -38,6 +43,13 @@ const NewGroupModal = ({ onClose }) => {
     );
   };
 
+  const handleAvatarChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setAvatarFile(file);
+    setAvatarPreview(URL.createObjectURL(file));
+  };
+
   const handleCreate = async () => {
     if (!groupName.trim() || selected.length < 2) {
       toast.error("Group name and at least 2 members required");
@@ -45,14 +57,23 @@ const NewGroupModal = ({ onClose }) => {
     }
     setCreating(true);
     try {
-      const { data } = await axiosInstance.post("/chats/group", {
-        name: groupName.trim(),
-        userIds: selected.map((u) => u._id),
+      const formData = new FormData();
+      formData.append("name", groupName.trim());
+      formData.append("userIds", JSON.stringify(selected.map((u) => u._id)));
+      if (avatarFile) formData.append("groupAvatar", avatarFile);
+
+      const { data } = await axiosInstance.post("/chats/group", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
+
       await fetchChats();
       openChat(data.chat);
       onClose();
       toast.success("Group created!");
+
+      // Notify the other members in real-time so the group appears
+      // on their side instantly, without needing a page refresh.
+      socket?.emit("new-group", { chat: data.chat });
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to create group");
     } finally {
@@ -141,6 +162,27 @@ const NewGroupModal = ({ onClose }) => {
 
         {step === 2 && (
           <div className="p-4">
+            <div className="flex flex-col items-center mb-5">
+              <div className="relative">
+                <Avatar src={avatarPreview} name={groupName || "Group"} isGroup size="xl" />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute bottom-0 right-0 bg-accent-500 text-white p-1.5 rounded-full shadow"
+                  title="Add group photo"
+                >
+                  <Camera size={14} />
+                </button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleAvatarChange}
+                  accept="image/*"
+                  className="hidden"
+                />
+              </div>
+              <p className="text-xs text-gray-400 mt-2">Tap the camera to add a group photo (optional)</p>
+            </div>
+
             <input
               autoFocus
               value={groupName}

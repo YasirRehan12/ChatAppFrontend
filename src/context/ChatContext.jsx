@@ -168,6 +168,16 @@ export const ChatProvider = ({ children }) => {
       }
     };
 
+    // A new group was created and this user was added as a member -
+    // add it to their chat list immediately instead of waiting for a refresh.
+    const handleNewGroup = (newChat) => {
+      setChats((prev) => {
+        if (prev.some((c) => c._id === newChat._id)) return prev;
+        return [{ ...newChat, unreadCount: 0 }, ...prev];
+      });
+      toast(`You were added to "${newChat.chatName}"`, { icon: "👥" });
+    };
+
     socket.on("message-received", handleMessageReceived);
     socket.on("typing", handleTyping);
     socket.on("stop-typing", handleStopTyping);
@@ -175,6 +185,7 @@ export const ChatProvider = ({ children }) => {
     socket.on("message-deleted-broadcast", handleMessageDeleted);
     socket.on("message-reaction-broadcast", handleReaction);
     socket.on("group-updated-broadcast", handleGroupUpdated);
+    socket.on("new-group-broadcast", handleNewGroup);
 
     return () => {
       socket.off("message-received", handleMessageReceived);
@@ -184,6 +195,7 @@ export const ChatProvider = ({ children }) => {
       socket.off("message-deleted-broadcast", handleMessageDeleted);
       socket.off("message-reaction-broadcast", handleReaction);
       socket.off("group-updated-broadcast", handleGroupUpdated);
+      socket.off("new-group-broadcast", handleNewGroup);
     };
   }, [socket, user, bumpChatToTop, playNotificationSound]);
 

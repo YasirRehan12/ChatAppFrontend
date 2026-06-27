@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { X, Crown, UserMinus, UserPlus, LogOut, Shield } from "lucide-react";
+import { useState, useRef } from "react";
+import { X, Crown, UserMinus, UserPlus, LogOut, Shield, Camera } from "lucide-react";
 import Avatar from "./Avatar";
 import axiosInstance from "../utils/axiosInstance";
 import { useAuth } from "../context/AuthContext";
@@ -14,6 +14,8 @@ const GroupInfoModal = ({ chat, onClose }) => {
   const { socket } = useSocket();
   const [showAddMember, setShowAddMember] = useState(false);
   const [currentChat, setCurrentChat] = useState(chat);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const avatarInputRef = useRef(null);
 
   const isAdmin = currentChat.admins?.some((a) => a._id === user._id);
 
@@ -21,6 +23,28 @@ const GroupInfoModal = ({ chat, onClose }) => {
     setCurrentChat(updatedChat);
     setChats((prev) => prev.map((c) => (c._id === updatedChat._id ? updatedChat : c)));
     socket?.emit("group-updated", { chatId: updatedChat._id, chat: updatedChat });
+  };
+
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setUploadingAvatar(true);
+    try {
+      const formData = new FormData();
+      formData.append("groupAvatar", file);
+
+      const { data } = await axiosInstance.put(`/chats/group/${currentChat._id}`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      updateChatEverywhere(data.chat);
+      toast.success("Group photo updated");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to update group photo");
+    } finally {
+      setUploadingAvatar(false);
+      if (avatarInputRef.current) avatarInputRef.current.value = "";
+    }
   };
 
   const handleMakeAdmin = async (userId) => {
@@ -92,7 +116,26 @@ const GroupInfoModal = ({ chat, onClose }) => {
         </div>
 
         <div className="flex flex-col items-center py-6 border-b border-gray-100 dark:border-gray-800">
-          <Avatar src={currentChat.groupAvatar?.url} name={currentChat.chatName} isGroup size="xl" />
+          <div className="relative">
+            <Avatar src={currentChat.groupAvatar?.url} name={currentChat.chatName} isGroup size="xl" />
+            {isAdmin && (
+              <button
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={uploadingAvatar}
+                className="absolute bottom-0 right-0 bg-accent-500 text-white p-1.5 rounded-full shadow disabled:opacity-60"
+                title="Change group photo"
+              >
+                <Camera size={14} />
+              </button>
+            )}
+            <input
+              type="file"
+              ref={avatarInputRef}
+              onChange={handleAvatarChange}
+              accept="image/*"
+              className="hidden"
+            />
+          </div>
           <h3 className="font-semibold text-lg text-gray-900 dark:text-white mt-3">{currentChat.chatName}</h3>
           <p className="text-sm text-gray-400">{currentChat.users.length} members</p>
         </div>
